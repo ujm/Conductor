@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.conductor/logs/
+*.env
+.DS_Store
+.vite/
+メモ.md
