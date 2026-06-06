@@ -5,20 +5,21 @@
 
 import { useState, useEffect } from "react";
 import { Toaster } from "react-hot-toast";
-import { GitBranch, List, FolderOpen, ScrollText, CheckSquare, Settings, Bell } from "lucide-react";
+import { GitBranch, List, FolderOpen, ScrollText, CheckSquare, Settings, Bell, Cpu } from "lucide-react";
 
 import { PipelineView } from "./components/pipeline/PipelineView";
 import { TaskBoard } from "./components/tasks/TaskBoard";
 import { FileManager } from "./components/files/FileManager";
 import { LogViewer } from "./components/logs/LogViewer";
 import { ApprovalQueue } from "./components/approvals/ApprovalQueue";
+import { AgentConfigView } from "./components/agents/AgentConfig";
 
 import { useWebSocket } from "./hooks/useWebSocket";
 import { usePipelineStore } from "./stores/pipelineStore";
 import { useAgentStore } from "./stores/agentStore";
 import { useApprovalStore } from "./stores/approvalStore";
 
-type ViewId = "pipeline" | "tasks" | "files" | "logs" | "approvals" | "settings";
+type ViewId = "pipeline" | "tasks" | "files" | "logs" | "agents" | "approvals" | "settings";
 
 interface NavItem {
   id: ViewId;
@@ -27,12 +28,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "pipeline",  label: "Pipeline",  icon: <GitBranch size={16} /> },
-  { id: "tasks",     label: "Tasks",     icon: <List size={16} /> },
-  { id: "files",     label: "Files",     icon: <FolderOpen size={16} /> },
-  { id: "logs",      label: "Logs",      icon: <ScrollText size={16} /> },
-  { id: "approvals", label: "Approvals", icon: <CheckSquare size={16} /> },
-  { id: "settings",  label: "Settings",  icon: <Settings size={16} /> },
+  { id: "pipeline",  label: "Pipeline",     icon: <GitBranch size={16} /> },
+  { id: "tasks",     label: "Tasks",        icon: <List size={16} /> },
+  { id: "files",     label: "Files",        icon: <FolderOpen size={16} /> },
+  { id: "logs",      label: "Logs",         icon: <ScrollText size={16} /> },
+  { id: "agents",    label: "Agent Config", icon: <Cpu size={16} /> },
+  { id: "approvals", label: "Approvals",    icon: <CheckSquare size={16} /> },
+  { id: "settings",  label: "Settings",     icon: <Settings size={16} /> },
 ];
 
 /** アプリケーションルートコンポーネント */
@@ -135,6 +137,7 @@ export function App() {
           {activeView === "tasks"     && <TaskBoard />}
           {activeView === "files"     && <FileManager />}
           {activeView === "logs"      && <LogViewer />}
+          {activeView === "agents"    && <AgentConfigView />}
           {activeView === "approvals" && <ApprovalQueue />}
           {activeView === "settings"  && (
             <div className="flex items-center justify-center h-full" style={{ color: "#9ba5bc" }}>
