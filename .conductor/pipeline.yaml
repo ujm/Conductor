@@ -1,0 +1,9 @@
+version: 1
+name: "Default Pipeline"
+agents:
+  - id: node-01
+    agent: claude-code
+    order: 1
+    task: "サンプルタスク: コードをレビューしてください"
+    instruction_files: []
+    output_dir: outputs/
