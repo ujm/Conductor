@@ -50,7 +50,7 @@ function buildNodesAndEdges(
   const rfNodes: Node[] = nodes.map((n, i) => ({
     id: n.id,
     type: "agentCard",
-    position: { x: 60 + i * 280, y: 120 },
+    position: n.position ?? { x: 60 + i * 280, y: 120 },
     data: { node: n, onRun, onStop, onTaskChange, onDelete } satisfies AgentNodeData,
   }));
 

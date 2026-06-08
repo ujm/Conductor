@@ -33,6 +33,7 @@ export interface PipelineNode {
   output_dir?: string;
   prompt_id?: string;
   prompt_variables?: Record<string, string>;
+  position?: { x: number; y: number };
   depends_on?: Array<{
     agent: string;
     trigger: TriggerType;

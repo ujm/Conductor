@@ -667,6 +667,7 @@ export class OrchestratorService {
         order: i + 1,
         task: step.task,
         instruction_files: [],
+        position: { x: 100, y: i * 220 },
         depends_on: step.depends_on.map((depId: string) => ({
           agent: depId,
           trigger: "done" as const,
