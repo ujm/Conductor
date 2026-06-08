@@ -49,6 +49,8 @@ export interface PipelineNode {
   task: string;
   instruction_files: string[];
   output_dir?: string;
+  prompt_id?: string;
+  prompt_variables?: Record<string, string>;
   depends_on?: Array<{
     agent: string;
     trigger: TriggerType;

@@ -1,7 +1,11 @@
 node_modules/
 dist/
 .conductor/logs/
+.conductor/draft-plan.json
+.conductor/pipeline-*.yaml
 *.env
 .DS_Store
 .vite/
 メモ.md
+hello.txt
+backend/.conductor/

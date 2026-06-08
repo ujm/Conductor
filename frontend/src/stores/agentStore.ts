@@ -7,6 +7,7 @@ interface AgentStore {
   agents: AgentConfig[];
   runtimeStates: Record<string, AgentRuntimeState>;
   setAgents: (agents: AgentConfig[]) => void;
+  updateAgent: (updated: AgentConfig) => void;
   updateRuntimeState: (state: AgentRuntimeState) => void;
   appendOutput: (nodeId: string, chunk: string) => void;
 }
@@ -16,6 +17,11 @@ export const useAgentStore = create<AgentStore>((set) => ({
   runtimeStates: {},
 
   setAgents: (agents) => set({ agents }),
+
+  updateAgent: (updated) =>
+    set((store) => ({
+      agents: store.agents.map((a) => (a.id === updated.id ? updated : a)),
+    })),
 
   updateRuntimeState: (incoming) =>
     set((store) => ({

@@ -62,5 +62,36 @@ export function createPipelineRouter(orchestrator: OrchestratorService): Router 
     res.json(orchestrator.getRuntimeStates());
   });
 
+  /** POST /api/pipeline/agents - パイプラインにノードを追加 */
+  router.post("/agents", async (req: Request, res: Response) => {
+    const { agentId, task } = req.body as { agentId?: string; task?: string };
+    if (!agentId) {
+      const err: ApiError = { error: "agentId は必須です", code: "VALIDATION_ERROR" };
+      res.status(400).json(err);
+      return;
+    }
+    try {
+      await orchestrator.addPipelineNode(agentId, task ?? "");
+      const pipeline = orchestrator.getPipeline();
+      res.status(201).json(pipeline);
+    } catch (err) {
+      const apiErr: ApiError = { error: String(err), code: "INTERNAL_ERROR" };
+      res.status(500).json(apiErr);
+    }
+  });
+
+  /** DELETE /api/pipeline/agents/:nodeId - パイプラインからノードを削除 */
+  router.delete("/agents/:nodeId", async (req: Request, res: Response) => {
+    const nodeId = req.params["nodeId"] as string;
+    try {
+      await orchestrator.removePipelineNode(nodeId);
+      const pipeline = orchestrator.getPipeline();
+      res.json(pipeline);
+    } catch (err) {
+      const apiErr: ApiError = { error: String(err), code: "INTERNAL_ERROR" };
+      res.status(500).json(apiErr);
+    }
+  });
+
   return router;
 }

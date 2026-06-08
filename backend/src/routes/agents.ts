@@ -32,6 +32,25 @@ export function createAgentsRouter(orchestrator: OrchestratorService): Router {
     }
   });
 
+  /** PUT /api/agents/:id - エージェント設定を更新する */
+  router.put("/:id", async (req: Request, res: Response) => {
+    const id = req.params["id"] as string;
+    const config = req.body as AgentConfig;
+    if (!config.name || !config.type) {
+      const err: ApiError = { error: "name, type は必須です", code: "VALIDATION_ERROR" };
+      res.status(400).json(err);
+      return;
+    }
+    config.id = id;
+    try {
+      await orchestrator.registerAgent(config);
+      res.json(config);
+    } catch (err) {
+      const apiErr: ApiError = { error: String(err), code: "INTERNAL_ERROR" };
+      res.status(500).json(apiErr);
+    }
+  });
+
   /** POST /api/agents/:id/run - 単一エージェント実行 */
   router.post("/:id/run", async (req: Request, res: Response) => {
     const id = req.params["id"] as string;

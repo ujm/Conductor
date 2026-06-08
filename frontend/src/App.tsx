@@ -1,24 +1,27 @@
 /**
  * Conductor メインアプリケーション
- * 3ペイン構成: 左ナビ + メインエリア + 右パネル
+ * 3ペイン構成: 左ナビ + メインエリア + ステータスバー
  */
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
-import { GitBranch, List, FolderOpen, ScrollText, CheckSquare, Settings, Bell } from "lucide-react";
+import { GitBranch, List, FolderOpen, ScrollText, CheckSquare, Settings, Bell, Cpu, BookOpen } from "lucide-react";
 
 import { PipelineView } from "./components/pipeline/PipelineView";
 import { TaskBoard } from "./components/tasks/TaskBoard";
 import { FileManager } from "./components/files/FileManager";
 import { LogViewer } from "./components/logs/LogViewer";
 import { ApprovalQueue } from "./components/approvals/ApprovalQueue";
+import { AgentConfigView } from "./components/agents/AgentConfig";
+import { PromptLibraryView } from "./components/prompt-library/PromptLibrary";
+import { StatusBar } from "./components/common/StatusBar";
 
 import { useWebSocket } from "./hooks/useWebSocket";
 import { usePipelineStore } from "./stores/pipelineStore";
 import { useAgentStore } from "./stores/agentStore";
 import { useApprovalStore } from "./stores/approvalStore";
-
-type ViewId = "pipeline" | "tasks" | "files" | "logs" | "approvals" | "settings";
+import { useNavStore } from "./stores/navStore";
+import type { ViewId } from "./types";
 
 interface NavItem {
   id: ViewId;
@@ -27,17 +30,19 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "pipeline",  label: "Pipeline",  icon: <GitBranch size={16} /> },
-  { id: "tasks",     label: "Tasks",     icon: <List size={16} /> },
-  { id: "files",     label: "Files",     icon: <FolderOpen size={16} /> },
-  { id: "logs",      label: "Logs",      icon: <ScrollText size={16} /> },
-  { id: "approvals", label: "Approvals", icon: <CheckSquare size={16} /> },
-  { id: "settings",  label: "Settings",  icon: <Settings size={16} /> },
+  { id: "pipeline",  label: "Pipeline",        icon: <GitBranch size={16} /> },
+  { id: "tasks",     label: "Tasks",           icon: <List size={16} /> },
+  { id: "files",     label: "Files",           icon: <FolderOpen size={16} /> },
+  { id: "logs",      label: "Logs",            icon: <ScrollText size={16} /> },
+  { id: "agents",    label: "Agent Config",    icon: <Cpu size={16} /> },
+  { id: "prompts",   label: "Prompt Library",  icon: <BookOpen size={16} /> },
+  { id: "approvals", label: "Approvals",       icon: <CheckSquare size={16} /> },
+  { id: "settings",  label: "Settings",        icon: <Settings size={16} /> },
 ];
 
 /** アプリケーションルートコンポーネント */
 export function App() {
-  const [activeView, setActiveView] = useState<ViewId>("pipeline");
+  const { activeView, setView } = useNavStore();
   const { send } = useWebSocket();
   const pipeline = usePipelineStore((s) => s.pipeline);
   const runtimeStates = useAgentStore((s) => s.runtimeStates);
@@ -45,7 +50,6 @@ export function App() {
 
   const runningCount = Object.values(runtimeStates).filter((s) => s.status === "running").length;
 
-  // 初回ロード時にエージェントとパイプラインを取得する
   useEffect(() => {
     fetch("/api/agents")
       .then((r) => r.json())
@@ -53,7 +57,7 @@ export function App() {
       .catch(console.error);
   }, []);
 
-  void send; // WebSocket は useWebSocket 内で接続・管理される
+  void send;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: "#0d0f14" }}>
@@ -79,7 +83,7 @@ export function App() {
         <div className="flex items-center gap-3">
           {approvalQueue.length > 0 && (
             <button
-              onClick={() => setActiveView("approvals")}
+              onClick={() => setView("approvals")}
               className="flex items-center gap-1.5 px-2 py-1 rounded text-xs"
               style={{ background: "#a78bfa22", color: "#a78bfa" }}
             >
@@ -109,7 +113,7 @@ export function App() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveView(item.id)}
+                onClick={() => setView(item.id)}
                 title={item.label}
                 className="relative w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
                 style={{
@@ -135,6 +139,8 @@ export function App() {
           {activeView === "tasks"     && <TaskBoard />}
           {activeView === "files"     && <FileManager />}
           {activeView === "logs"      && <LogViewer />}
+          {activeView === "agents"    && <AgentConfigView />}
+          {activeView === "prompts"   && <PromptLibraryView />}
           {activeView === "approvals" && <ApprovalQueue />}
           {activeView === "settings"  && (
             <div className="flex items-center justify-center h-full" style={{ color: "#9ba5bc" }}>
@@ -145,13 +151,7 @@ export function App() {
       </div>
 
       {/* ステータスバー */}
-      <footer
-        className="flex items-center justify-between px-4 py-1 border-t text-xs flex-shrink-0"
-        style={{ background: "#1a1e28", borderColor: "#2a3045", color: "#9ba5bc" }}
-      >
-        <span>{runningCount} agents running</span>
-        <span>{new Date().toLocaleTimeString("ja-JP")}</span>
-      </footer>
+      <StatusBar />
 
       <Toaster
         position="bottom-right"

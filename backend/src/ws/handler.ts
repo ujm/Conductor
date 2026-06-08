@@ -73,6 +73,26 @@ export function setupWebSocket(
     broadcast(wss, { event: "approval:queue", data: queue });
   });
 
+  // AI オーケストレーションイベントを購読してブロードキャスト
+  orchestrator.onOrchestration((event) => {
+    if (event.type === "planning") {
+      broadcast(wss, {
+        event: "pipeline:planning",
+        data: { goal: event.goal },
+      });
+    } else if (event.type === "plan_ready") {
+      broadcast(wss, {
+        event: "pipeline:plan_ready",
+        data: { plan: event.plan },
+      });
+    } else if (event.type === "error") {
+      broadcast(wss, {
+        event: "pipeline:orchestration_error",
+        data: { message: event.message },
+      });
+    }
+  });
+
   // ファイル変更を購読してブロードキャスト
   fileWatcher.subscribe((fileEvent) => {
     broadcast(wss, { event: "file:changed", data: fileEvent });

@@ -1,9 +1,17 @@
 version: 1
-name: "Default Pipeline"
+name: AI Generated Plan
 agents:
-  - id: node-01
+  - id: step-1
     agent: claude-code
     order: 1
-    task: "サンプルタスク: コードをレビューしてください"
+    task: /Users/yoshiakigoto/work/Conductor ディレクトリの存在を確認し、存在しない場合は作成する
     instruction_files: []
-    output_dir: outputs/
+    depends_on: []
+  - id: step-2
+    agent: claude-code
+    order: 2
+    task: /Users/yoshiakigoto/work/Conductor/hello.txt を作成し、内容を "Hello from Conductor v2.0" とする
+    instruction_files: []
+    depends_on:
+      - agent: step-1
+        trigger: done

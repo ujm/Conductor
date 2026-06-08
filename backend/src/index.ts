@@ -13,6 +13,7 @@ import { LogService } from "./services/LogService";
 import { ApprovalGateway } from "./services/ApprovalGateway";
 import { FileWatcher } from "./services/FileWatcher";
 import { OrchestratorService } from "./services/OrchestratorService";
+import { PromptService } from "./services/PromptService";
 
 import { createAgentsRouter } from "./routes/agents";
 import { createPipelineRouter } from "./routes/pipeline";
@@ -20,6 +21,8 @@ import { createTasksRouter } from "./routes/tasks";
 import { createLogsRouter } from "./routes/logs";
 import { createFilesRouter } from "./routes/files";
 import { createApprovalsRouter } from "./routes/approvals";
+import { createPromptsRouter } from "./routes/prompts";
+import { createOrchestrateRouter } from "./routes/orchestrate";
 import { setupWebSocket } from "./ws/handler";
 
 const PORT = parseInt(process.env["PORT"] ?? "3001", 10);
@@ -36,7 +39,10 @@ async function main(): Promise<void> {
   const fileWatcher = new FileWatcher(PROJECT_ROOT);
   fileWatcher.start();
 
-  const orchestrator = new OrchestratorService(PROJECT_ROOT, logService, approvalGateway);
+  const promptService = new PromptService(CONDUCTOR_DIR);
+  await promptService.init();
+
+  const orchestrator = new OrchestratorService(PROJECT_ROOT, logService, approvalGateway, promptService);
   await orchestrator.init();
 
   // Express アプリを構築する
@@ -62,6 +68,8 @@ async function main(): Promise<void> {
   app.use("/api/logs", createLogsRouter(logService));
   app.use("/api/files", createFilesRouter(fileWatcher));
   app.use("/api/approvals", createApprovalsRouter(approvalGateway));
+  app.use("/api/prompts", createPromptsRouter(promptService));
+  app.use("/api/orchestrate", createOrchestrateRouter(orchestrator));
 
   // ヘルスチェック
   app.get("/health", (_req, res) => {

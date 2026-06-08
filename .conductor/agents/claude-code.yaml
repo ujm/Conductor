@@ -1,18 +1,15 @@
 id: claude-code
 name: Claude Code
 type: cli
-icon: "🤖"
-color: "#4f8ef7"
+icon: 🤖
+color: '#4f8ef7'
 connection:
   command: claude
   args:
-    - "--dangerously-skip-permissions"
-  cwd: "{project_root}"
-  env:
-    ANTHROPIC_API_KEY: "{env.ANTHROPIC_API_KEY}"
+    - '--dangerously-skip-permissions'
+  cwd: /Users/yoshiakigoto/work/Conductor
 defaults:
   timeout_minutes: 30
   retry_count: 2
   approval_required: false
-  context_files:
-    - memory/project-context.md
+  context_files: []

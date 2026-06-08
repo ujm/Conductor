@@ -1,16 +1,16 @@
-/** TaskBoard - カンバン形式のタスク管理ボード */
+/** TaskBoard - カンバン形式のタスク管理ボード（D&Dでステータス変更） */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Plus } from "lucide-react";
 import { useTaskStore } from "../../stores/taskStore";
 import type { TaskConfig, TaskStatus } from "../../types";
 
 const COLUMNS: { status: TaskStatus; label: string }[] = [
-  { status: "todo",        label: "Todo" },
-  { status: "in_progress", label: "In Progress" },
-  { status: "review",      label: "Review" },
-  { status: "done",        label: "Done" },
-  { status: "blocked",     label: "Blocked" },
+  { status: "todo",         label: "Todo" },
+  { status: "in_progress",  label: "In Progress" },
+  { status: "review",       label: "Review" },
+  { status: "done",         label: "Done" },
+  { status: "blocked",      label: "Blocked" },
 ];
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -20,11 +20,18 @@ const PRIORITY_COLORS: Record<string, string> = {
   critical: "#f05c5c",
 };
 
-/** カンバンのタスクカード */
-function TaskCard({ task, onStatusChange }: { task: TaskConfig; onStatusChange: (id: string, status: TaskStatus) => void }) {
+function TaskCard({
+  task,
+  onDragStart,
+}: {
+  task: TaskConfig;
+  onDragStart: (id: string) => void;
+}) {
   return (
     <div
-      className="rounded-lg p-3 mb-2 border cursor-pointer transition-all duration-150"
+      draggable
+      onDragStart={() => onDragStart(task.id)}
+      className="rounded-lg p-3 mb-2 border cursor-grab active:cursor-grabbing transition-all duration-150 select-none"
       style={{ background: "#0d0f14", borderColor: "#2a3045" }}
     >
       <div className="flex items-start justify-between gap-1 mb-1">
@@ -39,26 +46,15 @@ function TaskCard({ task, onStatusChange }: { task: TaskConfig; onStatusChange: 
       {task.assigned_agent && (
         <p className="text-xs" style={{ color: "#9ba5bc" }}>{task.assigned_agent}</p>
       )}
-      {/* ステータス変更セレクト */}
-      <select
-        value={task.status}
-        onChange={(e) => onStatusChange(task.id, e.target.value as TaskStatus)}
-        onClick={(e) => e.stopPropagation()}
-        className="mt-2 text-xs rounded px-1 py-0.5 w-full outline-none"
-        style={{ background: "#1a1e28", color: "#9ba5bc", border: "1px solid #2a3045" }}
-      >
-        {COLUMNS.map((c) => (
-          <option key={c.status} value={c.status}>{c.label}</option>
-        ))}
-      </select>
     </div>
   );
 }
 
-/** カンバン形式のタスクボード */
 export function TaskBoard() {
   const { tasks, setTasks, updateTask } = useTaskStore();
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
+  const dragTaskId = useRef<string | null>(null);
 
   useEffect(() => {
     fetch("/api/tasks")
@@ -67,12 +63,29 @@ export function TaskBoard() {
       .catch(console.error);
   }, [setTasks]);
 
-  const handleStatusChange = async (id: string, status: TaskStatus) => {
+  const handleDragStart = (id: string) => {
+    dragTaskId.current = id;
+  };
+
+  const handleDragOver = (e: React.DragEvent, status: TaskStatus) => {
+    e.preventDefault();
+    setDragOverCol(status);
+  };
+
+  const handleDrop = async (targetStatus: TaskStatus) => {
+    const id = dragTaskId.current;
+    dragTaskId.current = null;
+    setDragOverCol(null);
+    if (!id) return;
+
+    const task = tasks.find((t) => t.id === id);
+    if (!task || task.status === targetStatus) return;
+
     try {
       const res = await fetch(`/api/tasks/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status: targetStatus }),
       });
       const updated = await res.json() as TaskConfig;
       updateTask(updated);
@@ -111,13 +124,13 @@ export function TaskBoard() {
           <input
             value={newTaskTitle}
             onChange={(e) => setNewTaskTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleCreateTask()}
+            onKeyDown={(e) => e.key === "Enter" && void handleCreateTask()}
             placeholder="新しいタスク..."
             className="text-xs rounded px-2 py-1 outline-none w-48"
             style={{ background: "#0d0f14", color: "#e8ecf4", border: "1px solid #2a3045" }}
           />
           <button
-            onClick={handleCreateTask}
+            onClick={() => void handleCreateTask()}
             className="p-1 rounded transition-colors"
             style={{ background: "#4f8ef7", color: "#fff" }}
           >
@@ -131,8 +144,15 @@ export function TaskBoard() {
         <div className="flex gap-4 h-full min-w-max">
           {COLUMNS.map((col) => {
             const colTasks = tasks.filter((t) => t.status === col.status);
+            const isOver = dragOverCol === col.status;
             return (
-              <div key={col.status} className="w-52 flex-shrink-0">
+              <div
+                key={col.status}
+                className="w-52 flex-shrink-0"
+                onDragOver={(e) => handleDragOver(e, col.status)}
+                onDragLeave={() => setDragOverCol(null)}
+                onDrop={() => void handleDrop(col.status)}
+              >
                 <div className="flex items-center justify-between mb-2 px-1">
                   <span className="text-xs font-semibold" style={{ color: "#9ba5bc" }}>
                     {col.label}
@@ -145,12 +165,23 @@ export function TaskBoard() {
                   </span>
                 </div>
                 <div
-                  className="rounded-lg p-2 min-h-[200px]"
-                  style={{ background: "#1a1e28", border: "1px solid #2a3045" }}
+                  className="rounded-lg p-2 min-h-[200px] transition-colors duration-150"
+                  style={{
+                    background: isOver ? "#2a3045" : "#1a1e28",
+                    border: `1px solid ${isOver ? "#4f8ef7" : "#2a3045"}`,
+                  }}
                 >
                   {colTasks.map((t) => (
-                    <TaskCard key={t.id} task={t} onStatusChange={handleStatusChange} />
+                    <TaskCard key={t.id} task={t} onDragStart={handleDragStart} />
                   ))}
+                  {isOver && colTasks.length === 0 && (
+                    <div
+                      className="rounded-md h-10 border-2 border-dashed flex items-center justify-center"
+                      style={{ borderColor: "#4f8ef7" }}
+                    >
+                      <span className="text-xs" style={{ color: "#4f8ef7" }}>ここにドロップ</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );

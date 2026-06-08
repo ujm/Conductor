@@ -1,5 +1,7 @@
 /** フロントエンド共通型定義 */
 
+export type ViewId = "pipeline" | "tasks" | "files" | "logs" | "agents" | "approvals" | "prompts" | "settings";
+
 export type AgentStatus =
   | "idle"
   | "running"
@@ -29,10 +31,33 @@ export interface PipelineNode {
   task: string;
   instruction_files: string[];
   output_dir?: string;
+  prompt_id?: string;
+  prompt_variables?: Record<string, string>;
   depends_on?: Array<{
     agent: string;
     trigger: TriggerType;
   }>;
+}
+
+export type VariableType = "file_path" | "string" | "number" | "select";
+
+export interface PromptVariable {
+  type: VariableType;
+  label: string;
+  default?: string;
+  required: boolean;
+  options?: string[];
+}
+
+export interface PromptTemplate {
+  id: string;
+  name: string;
+  category: string;
+  tags: string[];
+  template: string;
+  variables: Record<string, PromptVariable>;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PipelineConfig {
@@ -47,6 +72,19 @@ export interface AgentConfig {
   type: "cli" | "rest_api" | "websocket";
   icon: string;
   color: string;
+  connection?: {
+    command?: string;
+    args?: string[];
+    cwd?: string;
+    baseUrl?: string;
+    env?: Record<string, string>;
+  };
+  defaults?: {
+    timeout_minutes: number;
+    retry_count: number;
+    approval_required: boolean;
+    context_files: string[];
+  };
 }
 
 export type TaskStatus = "todo" | "in_progress" | "review" | "done" | "blocked";
@@ -82,3 +120,24 @@ export interface LogEntry {
   message: string;
   agentId?: string;
 }
+
+// ─── AI オーケストレーション ────────────────────────────────────
+
+export interface PlanStep {
+  id: string;
+  agent: string;
+  task: string;
+  depends_on: string[];
+}
+
+export interface OrchestratorPlan {
+  plan: PlanStep[];
+  summary: string;
+}
+
+export type GoalState =
+  | "idle"
+  | "planning"
+  | "awaiting_approval"
+  | "executing"
+  | "done";
