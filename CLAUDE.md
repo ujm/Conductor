@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Conductor は AI エージェント（Claude Code、Codex 等）を人間が指揮するためのオーケストレーション UI。バックエンド（Node.js + Express + WebSocket）とフロントエンド（React + Vite）の2つの独立したアプリで構成される。
 
+## セッション継続ワークフロー（基本動作）
+
+このリポジトリには `CONDUCTOR_PROJECT.md`（プロジェクト引き継ぎ資料）がある。セッションをまたいで作業を継続できるよう、以下を基本動作とする：
+
+- **セッション開始時**: 作業に着手する前に `CONDUCTOR_PROJECT.md` を読み、実装済み機能・既知の課題・直近のロードマップ・最終更新日時を把握する。
+- **セッション終了時**: ユーザーがセッションを閉じる意思を示した場合（「セッションを閉じます」「続きはまた今度」等）、`CONDUCTOR_PROJECT.md` の該当セクション（実装済み機能・動作確認済みフロー・今後のロードマップ・最終更新日）を今回の作業内容で更新する。
+
 ## Commands
 
 ### 開発起動（両方同時）
