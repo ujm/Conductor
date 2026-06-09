@@ -1,95 +1,97 @@
 # Conductor
 
-AI エージェント（Claude Code 等）を人間が指揮するためのオーケストレーション UI。
+[日本語](README.ja.md)
+
+An orchestration UI for humans to direct AI agents (Claude Code, etc.).
 
 ---
 
-## 概要
+## Overview
 
-Conductor は、複数の AI エージェントをパイプラインとして組み合わせ、人間がその進行を管理・監督するためのツールです。エージェントを「いつ・どの順で・どんな条件で」動かすかを UI から定義し、実行中の出力・ログ・ファイル変更をリアルタイムで確認できます。
+Conductor is a tool that combines multiple AI agents into pipelines, letting a human manage and supervise their progress. From the UI you define when, in what order, and under what conditions agents run, and you can monitor their output, logs, and file changes in real time while they execute.
 
-対象ユーザーは、AI エージェントを使って実際の開発・調査・自動化タスクを行いたいが、全自動では不安なため人間の目を挟みたいと考えているエンジニアです。
-
----
-
-## 出来ること
-
-### パイプライン管理（Pipeline View）
-- エージェントノードをドラッグ＆ドロップで並べ替え、実行順を定義
-- ノード間の依存関係（`on:done` / `on:error` / `on:approve` / `parallel`）を設定
-- パイプライン全体の一括実行・停止、または個々のノード単位での実行
-- 各エージェントの状態（idle / running / done / error / approval 待ち）をリアルタイム表示
-- 実行中はプログレスバーと出力の一部をカード上に表示
-
-### タスク管理（Task Board）
-- カンバン形式（Todo / In Progress / Review / Done / Blocked）でタスクを管理
-- タスクカードをドラッグ＆ドロップしてステータスを変更
-- タスクの優先度（low / medium / high / critical）を色で識別
-- エージェントへのタスク割り当てに対応
-
-### ファイル管理（File Manager）
-- プロジェクトルート以下のファイルツリーをブラウズ
-- テキストファイルをその場で閲覧・編集・保存
-- `.conductor/` の設定ファイル（YAML）もブラウザ上で直接編集可能
-
-### ログ閲覧（Log Viewer）
-- エージェントの標準出力・エラーをリアルタイムにストリーミング表示
-- エージェント単位のフィルタリング
-- ログレベル（info / warn / error / debug）を色で識別
-- JSONL 形式でディスクにも永続保存（日付別）
-
-### 承認ゲート（Approval Queue）
-- `on:approve` 依存のノードは人間の承認まで実行をブロック
-- 承認・却下をボタン一発で実行
-- 承認待ちがあるときはヘッダーとナビに通知バッジを表示
-
-### エージェント設定（Agent Config）
-- CLI エージェント（コマンド・引数・作業ディレクトリ）を UI から登録
-- REST API エージェント（Base URL）の登録にも対応
-- タイムアウト・リトライ回数を個別設定
+This is aimed at engineers who want to use AI agents for real development, research, and automation tasks, but want a human in the loop because fully autonomous execution feels too risky.
 
 ---
 
-## 方式
+## Features
+
+### Pipeline Management (Pipeline View)
+- Drag and drop agent nodes to reorder and define execution order
+- Configure dependencies between nodes (`on:done` / `on:error` / `on:approve` / `parallel`)
+- Run or stop the entire pipeline at once, or execute individual nodes
+- Real-time display of each agent's state (idle / running / done / error / awaiting approval)
+- Progress bar and partial output shown on cards while running
+
+### Task Management (Task Board)
+- Manage tasks on a Kanban board (Todo / In Progress / Review / Done / Blocked)
+- Drag and drop task cards to change their status
+- Color-coded task priority (low / medium / high / critical)
+- Support for assigning tasks to agents
+
+### File Management (File Manager)
+- Browse the file tree under the project root
+- View, edit, and save text files in place
+- Edit `.conductor/` configuration files (YAML) directly in the browser
+
+### Log Viewer
+- Real-time streaming of agent stdout/stderr
+- Filter logs by agent
+- Color-coded log levels (info / warn / error / debug)
+- Persisted to disk in JSONL format (organized by date)
+
+### Approval Queue
+- Nodes with an `on:approve` dependency block execution until a human approves
+- Approve or reject with a single button click
+- Notification badge shown in the header and navigation when approvals are pending
+
+### Agent Configuration
+- Register CLI agents (command, arguments, working directory) from the UI
+- Also supports registering REST API agents (Base URL)
+- Configure timeout and retry count individually per agent
+
+---
+
+## Architecture
 
 ```
-フロントエンド (React + Vite, :5173)
-  └── useWebSocket フック（WebSocket 接続 1本）
-        ├── 受信イベント → Zustand ストア（自動更新）
-        └── 送信メッセージ → バックエンド
+Frontend (React + Vite, :5173)
+  └── useWebSocket hook (single WebSocket connection)
+        ├── Incoming events → Zustand stores (auto-update)
+        └── Outgoing messages → Backend
 
-バックエンド (Express 5 + ws, :3001)
-  ├── REST API  /api/*  ← エージェント・パイプライン・タスク・ファイル管理
-  └── WebSocket /ws     ← 状態変化・出力・ログをブロードキャスト
+Backend (Express 5 + ws, :3001)
+  ├── REST API  /api/*  ← Agent / pipeline / task / file management
+  └── WebSocket /ws     ← Broadcasts state changes, output, and logs
 ```
 
-### 主要コンポーネント
+### Key Components
 
-| レイヤー | クラス / モジュール | 役割 |
+| Layer | Class / Module | Role |
 |---|---|---|
-| サービス | `OrchestratorService` | パイプライン状態機械。依存解決・リトライ制御 |
-| サービス | `ApprovalGateway` | `on:approve` ノードを Promise でブロック |
-| サービス | `LogService` | JSONL 書き込み + WebSocket ストリーミング |
-| サービス | `FileWatcher` | chokidar でファイル変更を監視 |
-| コネクター | `CliAdapter` | `child_process.spawn` で CLI エージェントを起動 |
-| コネクター | `RestAdapter` | `fetch + AbortController` で REST エージェントを呼び出し |
-| フロントエンド | Zustand ストア群 | WebSocket イベントで直接更新される唯一の状態源 |
+| Service | `OrchestratorService` | Pipeline state machine. Dependency resolution and retry control |
+| Service | `ApprovalGateway` | Blocks `on:approve` nodes via Promises |
+| Service | `LogService` | JSONL file writes + WebSocket streaming |
+| Service | `FileWatcher` | Watches file changes with chokidar |
+| Connector | `CliAdapter` | Launches CLI agents via `child_process.spawn` |
+| Connector | `RestAdapter` | Calls REST agents via `fetch + AbortController` |
+| Frontend | Zustand stores | The single source of state, updated directly by WebSocket events |
 
-### 設定ファイル
+### Configuration Files
 
-すべての設定は `.conductor/` ディレクトリに YAML で永続化されます。
+All configuration is persisted as YAML under the `.conductor/` directory.
 
 ```
 .conductor/
-├── project.yaml          # プロジェクト名・ルートパス
-├── pipeline.yaml         # エージェントの順序・依存関係
+├── project.yaml          # Project name and root path
+├── pipeline.yaml         # Agent order and dependencies
 ├── agents/
-│   └── claude-code.yaml  # エージェント接続設定（1ファイル1エージェント）
+│   └── claude-code.yaml  # Agent connection settings (one file per agent)
 └── tasks/
-    └── <uuid>.yaml       # タスク（1ファイル1タスク）
+    └── <uuid>.yaml       # Tasks (one file per task)
 ```
 
-**`pipeline.yaml` の例：**
+**Example `pipeline.yaml`:**
 
 ```yaml
 version: 1
@@ -98,27 +100,27 @@ agents:
   - id: node-01
     agent: claude-code
     order: 1
-    task: "READMEを更新してください"
+    task: "Update the README"
     instruction_files: []
   - id: node-02
     agent: claude-code
     order: 2
-    task: "テストを実行してください"
+    task: "Run the tests"
     depends_on:
       - agent: node-01
-        trigger: done       # node-01 完了後に自動起動
+        trigger: done       # Starts automatically once node-01 completes
 ```
 
-**`trigger` の種類：**
+**Trigger types:**
 
-| 値 | 意味 |
+| Value | Meaning |
 |---|---|
-| `done` | 前ノードが正常完了したら自動起動 |
-| `error` | 前ノードがエラー終了したら自動起動 |
-| `approve` | 人間が承認ボタンを押すまで待機 |
-| `parallel` | 依存なし（パイプライン開始と同時に起動） |
+| `done` | Starts automatically when the previous node completes successfully |
+| `error` | Starts automatically when the previous node ends with an error |
+| `approve` | Waits until a human clicks the approve button |
+| `parallel` | No dependency (starts at the same time as the pipeline) |
 
-### エージェント設定ファイル（`agents/*.yaml`）の例
+### Example Agent Configuration File (`agents/*.yaml`)
 
 ```yaml
 id: claude-code
@@ -136,67 +138,67 @@ defaults:
   retry_count: 2
   approval_required: false
   context_files:
-    - memory/project-context.md   # 実行前にプロンプトへ付加するファイル
+    - memory/project-context.md   # File appended to the prompt before execution
 ```
 
-`{project_root}` や `{env.変数名}` はバックエンドが起動時に解決します。
+`{project_root}` and `{env.VAR_NAME}` are resolved by the backend at startup.
 
 ---
 
-## 使い方
+## Usage
 
-### 前提
+### Prerequisites
 
-- Node.js 20 以上
-- Claude Code CLI がインストール済み（`claude` コマンドが使える状態）
+- Node.js 20 or later
+- Claude Code CLI installed (the `claude` command must be available)
 
-### インストール
+### Installation
 
 ```bash
 git clone https://github.com/ujm/Conductor.git
 cd Conductor
 
-# バックエンド依存インストール
+# Install backend dependencies
 cd backend && npm install && cd ..
 
-# フロントエンド依存インストール
+# Install frontend dependencies
 cd frontend && npm install && cd ..
 ```
 
-### 起動
+### Running
 
 ```bash
-# PROJECT_ROOT に管理したいプロジェクトのパスを指定
+# Set PROJECT_ROOT to the path of the project you want to manage
 PROJECT_ROOT=/path/to/your/project npm run dev
 ```
 
-ブラウザで `http://localhost:5173` を開きます。
+Open `http://localhost:5173` in your browser.
 
-> **備考**  
-> `npm run dev` はバックエンド（`:3001`）とフロントエンド（`:5173`）を同時に起動します。  
-> フロントエンドの `/api` および `/ws` へのリクエストは Vite の dev proxy 経由でバックエンドに転送されます。
+> **Note**  
+> `npm run dev` starts both the backend (`:3001`) and frontend (`:5173`) at the same time.  
+> Frontend requests to `/api` and `/ws` are forwarded to the backend via the Vite dev proxy.
 
-### 初回設定
+### Initial Setup
 
-1. `.conductor/` ディレクトリがなければ自動生成されます
-2. **Agent Config** 画面でエージェントを登録するか、`.conductor/agents/` に YAML を直接作成します
-3. **Pipeline View** でノードを追加し、依存関係を設定します
-4. Pipeline View の **Run** ボタンでパイプラインを実行します
+1. The `.conductor/` directory is created automatically if it doesn't exist
+2. Register agents from the **Agent Config** screen, or create YAML files directly under `.conductor/agents/`
+3. Add nodes and configure dependencies in **Pipeline View**
+4. Run the pipeline using the **Run** button in Pipeline View
 
-### パイプラインを実行する
+### Running a Pipeline
 
-1. Pipeline View を開く
-2. エージェントカードの **▶ Run** ボタンを押す（個別実行）、またはヘッダーの **Run Pipeline** で全体実行
-3. Log Viewer でリアルタイム出力を確認
-4. `on:approve` ノードは Approval Queue 画面で承認 / 却下
+1. Open Pipeline View
+2. Press the **▶ Run** button on an agent card to run it individually, or **Run Pipeline** in the header to run the whole pipeline
+3. Watch real-time output in the Log Viewer
+4. Approve or reject `on:approve` nodes from the Approval Queue screen
 
-### タスクをエージェントに渡す
+### Assigning Tasks to Agents
 
-1. Task Board で新しいタスクを作成（Enter キーまたは `+` ボタン）
-2. `.conductor/tasks/<uuid>.yaml` に `assigned_agent` フィールドを設定
-3. Pipeline のノード設定でそのタスク YAML を `instruction_files` に指定
+1. Create a new task on the Task Board (Enter key or `+` button)
+2. Set the `assigned_agent` field in `.conductor/tasks/<uuid>.yaml`
+3. Reference that task YAML in `instruction_files` in the pipeline node configuration
 
-### テスト
+### Testing
 
 ```bash
 cd backend && npm test
@@ -204,13 +206,13 @@ cd backend && npm test
 
 ---
 
-## 技術スタック
+## Tech Stack
 
-| 領域 | 使用技術 |
+| Area | Technology |
 |---|---|
-| バックエンド | Node.js 20 / TypeScript 6 / Express 5 / ws |
-| フロントエンド | React 19 / Vite 8 / TypeScript 6 / Tailwind CSS v4 |
-| 状態管理 | Zustand 5 |
-| パイプライン UI | React Flow (@xyflow/react) |
-| テスト | Vitest |
-| 設定フォーマット | YAML（js-yaml） |
+| Backend | Node.js 20 / TypeScript 6 / Express 5 / ws |
+| Frontend | React 19 / Vite 8 / TypeScript 6 / Tailwind CSS v4 |
+| State Management | Zustand 5 |
+| Pipeline UI | React Flow (@xyflow/react) |
+| Testing | Vitest |
+| Config Format | YAML (js-yaml) |
